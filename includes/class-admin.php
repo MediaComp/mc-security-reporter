@@ -133,38 +133,87 @@ final class Admin {
 		);
 		?>
 		<div class="wrap mc-security-reporter">
-			<h1>MC Security Monitor</h1>
-			<?php
-			if ( is_multisite() ) {
-				wp_admin_notice( 'Single-site WordPress is required. Multisite inventory is not supported.', array( 'type' => 'error' ) );
-			} elseif ( ! $secure ) {
-				wp_admin_notice( 'HTTPS is required for the settings screen and inventory endpoint. Token generation is unavailable. Do not disable TLS or hosting protections.', array( 'type' => 'error' ) );
-			}
-			?>
-			<p>Status: <strong id="mc-security-reporter-status"><?php echo $enabled ? 'Enabled' : 'Disabled'; ?></strong></p>
-			<p>Site ID: <code><?php echo esc_html( $settings['site_id'] ?? 'Not initialized' ); ?></code></p>
-			<p>Inventory URL: <code><?php echo esc_html( $url ); ?></code></p>
-			<p>Last token rotation: <?php echo esc_html( $settings['rotated_at'] ?? 'Never' ); ?></p>
-			<p>Checks Core and all regular plugins/themes, including inactive components. Mu-plugins, drop-ins and multisite are excluded. This inventory does not prove a site is secure.</p>
-			<form id="mc-security-reporter-form" action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" method="post" autocomplete="off">
-				<input type="hidden" name="action" value="mc_security_reporter_manage">
-				<input type="hidden" name="nonce" value="<?php echo esc_attr( wp_create_nonce( 'mc_security_reporter_manage' ) ); ?>">
-				<input type="hidden" name="ticket" value="<?php echo esc_attr( Credentials::issue_ticket() ); ?>">
-				<?php if ( ! is_multisite() ) : ?>
-					<button type="submit" class="button button-primary" name="operation" value="<?php echo $enabled ? 'rotate' : 'generate'; ?>" <?php disabled( ! $secure ); ?>><?php echo $enabled ? 'Rotate Token' : 'Generate Access Token'; ?></button>
-					<button type="submit" class="button" name="operation" value="disable">Disable API</button>
-					<button type="submit" class="button" name="operation" value="reset_identity">Reset Clone Identity and Disable API</button>
-				<?php endif; ?>
-			</form>
-			<p>Rotation revokes the old token immediately. Update the corresponding GitHub Secret promptly. Use identity reset only for a cloned site; an ordinary domain change preserves identity.</p>
-			<div id="mc-security-reporter-result" role="status" aria-live="polite"></div>
-			<p><button id="mc-security-reporter-reload" type="button" class="button" hidden>Reload Settings</button></p>
-			<p id="mc-security-reporter-token" hidden></p>
-			<h2>Site configuration example</h2>
-			<p>Replace the site name and token environment name. Keep the token itself in your secret manager.</p>
-			<textarea id="mc-security-reporter-config" readonly rows="9"><?php echo esc_textarea( wp_json_encode( $config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></textarea>
-			<p><button id="mc-security-reporter-copy" type="button" class="button">Copy Configuration Example</button></p>
-			<noscript><p>JavaScript is required for one-time token display. No token is shown by this settings page.</p></noscript>
+			<header class="mc-reporter-header">
+				<h1>MC Security Monitor</h1>
+				<p class="mc-reporter-intro">Connect this site's inventory to your security monitor.</p>
+			</header>
+			<?php if ( is_multisite() ) : ?>
+				<div class="mc-reporter-alert" role="alert">
+					<strong>Single-site WordPress required</strong>
+					<p>Multisite inventory and token management are not supported.</p>
+				</div>
+			<?php elseif ( ! $secure ) : ?>
+				<div class="mc-reporter-alert" role="alert">
+					<strong>HTTPS is required</strong>
+					<p>Use HTTPS for this settings page and the inventory URL to generate or rotate a token. Keep TLS and hosting protections enabled.</p>
+				</div>
+			<?php endif; ?>
+			<div class="mc-reporter-grid">
+				<section class="mc-reporter-card" aria-labelledby="mc-reporter-connection-title">
+					<div class="mc-reporter-card-heading">
+						<h2 id="mc-reporter-connection-title">Site connection</h2>
+						<strong id="mc-security-reporter-status" class="mc-reporter-status" data-state="<?php echo $enabled ? 'enabled' : 'disabled'; ?>"><?php echo $enabled ? 'Enabled' : 'Disabled'; ?></strong>
+					</div>
+					<p class="mc-reporter-description">Inventory API access for this site. Scanner connection is configured separately.</p>
+					<label class="mc-reporter-label" for="mc-security-reporter-endpoint">Inventory URL</label>
+					<div class="mc-reporter-copy-field">
+						<input id="mc-security-reporter-endpoint" type="url" readonly value="<?php echo esc_attr( $url ); ?>" spellcheck="false">
+						<button id="mc-security-reporter-copy-endpoint" type="button" class="button">Copy URL</button>
+					</div>
+					<span id="mc-security-reporter-endpoint-feedback" class="mc-reporter-copy-feedback" role="status" aria-live="polite"></span>
+					<dl class="mc-reporter-facts">
+						<div><dt>Site ID</dt><dd><code><?php echo esc_html( $settings['site_id'] ?? 'Not initialized' ); ?></code></dd></div>
+						<div><dt>Transport</dt><dd><span class="mc-reporter-transport"><?php echo $secure ? 'HTTPS ready' : 'HTTPS required'; ?></span></dd></div>
+						<div><dt>Last token change</dt><dd><?php echo esc_html( empty( $settings['rotated_at'] ) ? 'Never' : wp_date( 'M j, Y · H:i', strtotime( $settings['rotated_at'] ), new \DateTimeZone( 'UTC' ) ) . ' UTC' ); ?></dd></div>
+					</dl>
+				</section>
+				<section class="mc-reporter-card" aria-labelledby="mc-reporter-token-title">
+					<h2 id="mc-reporter-token-title">Access token</h2>
+					<p class="mc-reporter-description"><?php echo $enabled ? 'Rotating creates a new token and immediately revokes the current one.' : 'Generate a token to enable this site\'s inventory API.'; ?></p>
+					<form id="mc-security-reporter-form" action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" method="post" autocomplete="off">
+						<input type="hidden" name="action" value="mc_security_reporter_manage">
+						<input type="hidden" name="nonce" value="<?php echo esc_attr( wp_create_nonce( 'mc_security_reporter_manage' ) ); ?>">
+						<input type="hidden" name="ticket" value="<?php echo esc_attr( Credentials::issue_ticket() ); ?>">
+						<?php if ( ! is_multisite() ) : ?>
+							<div class="mc-reporter-actions">
+								<button type="submit" class="button button-primary" name="operation" value="<?php echo $enabled ? 'rotate' : 'generate'; ?>" <?php disabled( ! $secure ); ?>><?php echo $enabled ? 'Rotate Token' : 'Generate Access Token'; ?></button>
+								<button type="submit" class="button" name="operation" value="disable">Disable API</button>
+							</div>
+							<details class="mc-reporter-advanced">
+								<summary>Cloned site? Reset identity</summary>
+								<p>Use only on a copied database. Creates a new Site ID and disables API access. A domain change does not need a reset.</p>
+								<button type="submit" class="button mc-reporter-danger" name="operation" value="reset_identity">Reset Clone Identity and Disable API</button>
+							</details>
+						<?php endif; ?>
+					</form>
+					<div id="mc-security-reporter-result" class="mc-reporter-feedback" role="status" aria-live="polite" hidden></div>
+					<div id="mc-security-reporter-token-panel" class="mc-reporter-token-panel" hidden>
+						<h3>Save your token now</h3>
+						<p>Shown once. Save it in your secret manager and update the site's GitHub Secret.</p>
+						<p id="mc-security-reporter-token" hidden></p>
+						<button id="mc-security-reporter-copy-token" type="button" class="button">Copy token</button>
+						<span id="mc-security-reporter-token-feedback" class="mc-reporter-copy-feedback" role="status" aria-live="polite"></span>
+					</div>
+					<button id="mc-security-reporter-reload" type="button" class="button mc-reporter-reload" hidden>Reload Settings</button>
+				</section>
+			</div>
+			<details class="mc-reporter-card mc-reporter-configuration">
+				<summary><span>Scanner configuration</span><span class="mc-reporter-summary-hint">JSON example for onboarding</span></summary>
+				<div class="mc-reporter-details-body">
+					<p>Replace the site name and token environment name. Add the token separately to GitHub Secrets; this example contains no token and starts disabled.</p>
+					<label class="screen-reader-text" for="mc-security-reporter-config">Site configuration example</label>
+					<textarea id="mc-security-reporter-config" readonly rows="9" spellcheck="false"><?php echo esc_textarea( wp_json_encode( $config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></textarea>
+					<div class="mc-reporter-actions">
+						<button id="mc-security-reporter-copy" type="button" class="button">Copy Configuration Example</button>
+						<span id="mc-security-reporter-copy-feedback" class="mc-reporter-copy-feedback" role="status" aria-live="polite"></span>
+					</div>
+				</div>
+			</details>
+			<details class="mc-reporter-coverage">
+				<summary>What does this plugin cover?</summary>
+				<p>WordPress Core and all regular plugins and themes, including inactive components. Mu-plugins, drop-ins and multisite are excluded. Inventory and known vulnerability matches do not prove a site is secure.</p>
+			</details>
+			<noscript><p class="mc-reporter-alert">JavaScript is required to manage and display tokens.</p></noscript>
 		</div>
 		<?php
 	}

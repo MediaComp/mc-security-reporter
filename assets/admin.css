@@ -1,10 +1,79 @@
-.mc-security-reporter [hidden] { display: none !important; }
-.mc-security-reporter #mc-security-reporter-token {
-  font-family: monospace;
-  overflow-wrap: anywhere;
-  padding: 1rem;
-  border: 1px solid #777;
-  user-select: all;
+/* Scoped to the Reporter's settings screen; uses WordPress's native type and controls. */
+.mc-security-reporter {
+  --mc-ink: #1d2939;
+  --mc-muted: #596575;
+  --mc-line: #dcdcde;
+  max-width: 1120px;
+  margin-right: 20px;
+  color: var(--mc-ink);
 }
-.mc-security-reporter textarea { width: min(100%, 60rem); font-family: monospace; }
-.mc-security-reporter form .button { margin: 0 0.5rem 0.5rem 0; }
+.mc-security-reporter [hidden] { display: none !important; }
+.mc-security-reporter .mc-reporter-header { margin: 28px 0 24px; }
+.mc-security-reporter h1 { padding: 0; color: var(--mc-ink); font-size: 28px; font-weight: 600; line-height: 1.3; }
+.mc-security-reporter .mc-reporter-intro { margin: 8px 0 0; color: var(--mc-muted); font-size: 14px; }
+.mc-security-reporter .mc-reporter-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; }
+.mc-security-reporter .mc-reporter-card { min-width: 0; padding: 24px; background: #fff; border: 1px solid var(--mc-line); border-radius: 8px; box-shadow: 0 1px 2px #00000004; }
+.mc-security-reporter h2 { margin: 0; color: var(--mc-ink); font-size: 17px; font-weight: 600; line-height: 1.5; }
+.mc-security-reporter .mc-reporter-card-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mc-security-reporter .mc-reporter-description { margin: 10px 0 22px; color: var(--mc-muted); font-size: 13px; line-height: 1.6; }
+.mc-security-reporter .mc-reporter-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; background: #f0f0f1; color: #50575e; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.mc-security-reporter .mc-reporter-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.mc-security-reporter .mc-reporter-status[data-state="enabled"] { background: #eaf6ee; color: #166534; }
+.mc-security-reporter .mc-reporter-label { display: block; margin-bottom: 8px; color: var(--mc-ink); font-size: 12px; font-weight: 600; }
+.mc-security-reporter .mc-reporter-copy-field { display: flex; align-items: stretch; gap: 8px; }
+.mc-security-reporter .mc-reporter-copy-field input { width: 100%; min-width: 0; margin: 0; padding: 6px 10px; border-color: var(--mc-line); background: #f6f7f7; font-family: Consolas, Monaco, monospace; font-size: 12px; }
+.mc-security-reporter .button { min-height: 36px; padding: 2px 12px; border-radius: 4px; }
+.mc-security-reporter .mc-reporter-copy-field .button { flex-shrink: 0; }
+.mc-security-reporter .mc-reporter-copy-feedback { display: inline-block; color: #166534; font-size: 12px; line-height: 1.5; }
+.mc-security-reporter .mc-reporter-copy-feedback:empty { display: none; }
+.mc-security-reporter .mc-reporter-copy-field + .mc-reporter-copy-feedback { margin-top: 6px; }
+.mc-security-reporter .mc-reporter-facts { margin: 22px 0 0; }
+.mc-security-reporter .mc-reporter-facts > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid #eef0f2; }
+.mc-security-reporter .mc-reporter-facts > div:last-child { padding-bottom: 0; }
+.mc-security-reporter dt { color: var(--mc-muted); font-size: 12px; }
+.mc-security-reporter dd { min-width: 0; margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.mc-security-reporter dd code { padding: 0; background: transparent; font-size: 12px; }
+.mc-security-reporter .mc-reporter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.mc-security-reporter .mc-reporter-alert { margin: 0 0 20px; padding: 15px 18px; border: 1px solid #ead7a0; border-left: 3px solid #dba617; border-radius: 5px; background: #fffaf0; color: #654d16; }
+.mc-security-reporter .mc-reporter-alert p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; }
+.mc-security-reporter .mc-reporter-advanced { margin-top: 22px; padding-top: 16px; border-top: 1px solid #eef0f2; }
+.mc-security-reporter summary { cursor: pointer; }
+.mc-security-reporter summary:focus-visible { outline: 2px solid #2271b1; outline-offset: 5px; border-radius: 2px; }
+.mc-security-reporter .mc-reporter-advanced summary { color: var(--mc-muted); font-size: 12px; }
+.mc-security-reporter .mc-reporter-advanced p { margin: 12px 0; color: var(--mc-muted); font-size: 12px; line-height: 1.6; }
+.mc-security-reporter .mc-reporter-danger { border-color: #b32d2e; color: #b32d2e; white-space: normal; text-align: left; }
+.mc-security-reporter .mc-reporter-danger:hover { border-color: #8a2424; color: #8a2424; }
+.mc-security-reporter .mc-reporter-feedback { margin-top: 20px; padding: 12px 14px; border-left: 3px solid #2271b1; background: #f0f6fc; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.mc-security-reporter .mc-reporter-token-panel { margin-top: 16px; padding: 16px; border: 1px solid #b9dcc6; border-radius: 5px; background: #f4faf6; }
+.mc-security-reporter .mc-reporter-token-panel h3 { margin: 0; color: #166534; font-size: 14px; }
+.mc-security-reporter .mc-reporter-token-panel > p { margin: 8px 0 12px; font-size: 12px; line-height: 1.6; }
+.mc-security-reporter #mc-security-reporter-token { padding: 10px; border: 1px solid #c8d8cd; border-radius: 4px; background: #fff; font-family: Consolas, Monaco, monospace; overflow-wrap: anywhere; user-select: all; }
+.mc-security-reporter .mc-reporter-reload { margin-top: 14px; }
+.mc-security-reporter .mc-reporter-configuration { margin-top: 20px; padding: 0; }
+.mc-security-reporter .mc-reporter-configuration > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 19px 24px; font-size: 14px; font-weight: 600; list-style: none; }
+.mc-security-reporter .mc-reporter-configuration > summary::-webkit-details-marker { display: none; }
+.mc-security-reporter .mc-reporter-configuration > summary::after { content: '+'; margin-left: auto; color: var(--mc-muted); font-size: 20px; font-weight: 400; }
+.mc-security-reporter .mc-reporter-configuration[open] > summary::after { content: '−'; }
+.mc-security-reporter .mc-reporter-summary-hint { color: var(--mc-muted); font-size: 12px; font-weight: 400; }
+.mc-security-reporter .mc-reporter-details-body { padding: 0 24px 24px; }
+.mc-security-reporter .mc-reporter-details-body > p { margin: 0 0 16px; color: var(--mc-muted); line-height: 1.6; }
+.mc-security-reporter textarea { box-sizing: border-box; width: 100%; max-width: 100%; margin: 0 0 14px; padding: 14px; border-color: var(--mc-line); background: #f6f7f7; font-family: Consolas, Monaco, monospace; font-size: 12px; line-height: 1.7; resize: vertical; }
+.mc-security-reporter .mc-reporter-coverage { margin: 20px 0 28px; color: var(--mc-muted); font-size: 12px; }
+.mc-security-reporter .mc-reporter-coverage p { max-width: 800px; line-height: 1.7; }
+@media (max-width: 1000px) {
+  .mc-security-reporter .mc-reporter-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .mc-security-reporter { margin-right: 10px; }
+  .mc-security-reporter .mc-reporter-header { margin-top: 22px; }
+  .mc-security-reporter h1 { font-size: 23px; }
+  .mc-security-reporter .mc-reporter-intro { font-size: 13px; }
+  .mc-security-reporter .mc-reporter-card { padding: 20px; }
+  .mc-security-reporter .mc-reporter-facts > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .mc-security-reporter .mc-reporter-copy-field { flex-direction: column; }
+  .mc-security-reporter .mc-reporter-copy-field .button { align-self: flex-start; }
+  .mc-security-reporter .mc-reporter-configuration { padding: 0; }
+  .mc-security-reporter .mc-reporter-configuration > summary { padding: 18px 20px; }
+  .mc-security-reporter .mc-reporter-summary-hint { display: none; }
+  .mc-security-reporter .mc-reporter-details-body { padding: 0 20px 20px; }
+}

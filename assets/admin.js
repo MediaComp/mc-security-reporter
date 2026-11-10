@@ -7,6 +7,19 @@
   const token = document.getElementById('mc-security-reporter-token');
   const reload = document.getElementById('mc-security-reporter-reload');
   const status = document.getElementById('mc-security-reporter-status');
+  const tokenPanel = document.getElementById('mc-security-reporter-token-panel');
+  const clearToken = () => {
+    if (!token.hidden && token.textContent) {
+      result.textContent = 'Token cleared from this page. Reload settings before another action.';
+      result.hidden = false;
+    }
+    token.textContent = '';
+    token.hidden = true;
+    if (tokenPanel) tokenPanel.hidden = true;
+    const feedback = document.getElementById('mc-security-reporter-token-feedback');
+    if (feedback) feedback.textContent = '';
+  };
+  const showResult = (message) => { result.textContent = message; result.hidden = false; };
   let attempted = false;
   reload.addEventListener('click', () => { window.location.reload(); });
   form.addEventListener('submit', async (event) => {
@@ -24,7 +37,7 @@
       endpoint = new URL(action, window.location.href);
       if (endpoint.origin !== window.location.origin) throw new Error('Cross-origin endpoint');
     } catch {
-      result.textContent = 'The settings request URL is invalid. Reload settings before another action.';
+      showResult('The settings request URL is invalid. Reload settings before another action.');
       reload.hidden = false;
       return;
     }
@@ -32,9 +45,8 @@
     body.set('operation', operation);
     attempted = true;
     form.querySelectorAll('button').forEach((button) => { button.disabled = true; });
-    token.textContent = '';
-    token.hidden = true;
-    result.textContent = 'Working…';
+    clearToken();
+    showResult('Working…');
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
@@ -61,8 +73,13 @@
       if (succeeds && /^[a-f0-9]{64}$/.test(payload.data?.token ?? '')) {
         token.textContent = payload.data.token;
         token.hidden = false;
+        if (tokenPanel) tokenPanel.hidden = false;
       }
-      if (succeeds) status.textContent = ['generate', 'rotate'].includes(operation) ? 'Enabled' : 'Disabled';
+      if (succeeds) {
+        const enabled = ['generate', 'rotate'].includes(operation);
+        status.textContent = enabled ? 'Enabled' : 'Disabled';
+        if (status.dataset) status.dataset.state = enabled ? 'enabled' : 'disabled';
+      }
     } catch {
       result.textContent = controller.signal.aborted
         ? 'The request timed out. Its result may be uncertain. Reload settings and rotate if needed. The request will not be retried automatically.'
@@ -72,14 +89,27 @@
       reload.hidden = false;
     }
   });
-  window.addEventListener('pagehide', () => { token.textContent = ''; token.hidden = true; });
-  window.addEventListener('pageshow', (event) => { if (event.persisted) { token.textContent = ''; token.hidden = true; } });
-  document.getElementById('mc-security-reporter-copy').addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(document.getElementById('mc-security-reporter-config').value);
-      result.textContent = 'Configuration example copied.';
-    } catch {
-      result.textContent = 'Select and copy the configuration example manually.';
-    }
-  });
+  window.addEventListener('pagehide', clearToken);
+  window.addEventListener('pageshow', (event) => { if (event.persisted) clearToken(); });
+  for (const [buttonId, targetId, feedbackId, text] of [
+    ['mc-security-reporter-copy', 'mc-security-reporter-config', 'mc-security-reporter-copy-feedback', false],
+    ['mc-security-reporter-copy-endpoint', 'mc-security-reporter-endpoint', 'mc-security-reporter-endpoint-feedback', false],
+    ['mc-security-reporter-copy-token', 'mc-security-reporter-token', 'mc-security-reporter-token-feedback', true],
+  ]) {
+    const button = document.getElementById(buttonId);
+    if (!button) continue;
+    button.addEventListener('click', async () => {
+      const target = document.getElementById(targetId);
+      const value = text ? target.textContent : target.value;
+      if (!value) return;
+      const feedback = document.getElementById(feedbackId) ?? result;
+      try {
+        await navigator.clipboard.writeText(value);
+        feedback.textContent = 'Copied.';
+      } catch {
+        feedback.textContent = 'Select the text and copy it manually.';
+      }
+      feedback.hidden = false;
+    });
+  }
 })();
