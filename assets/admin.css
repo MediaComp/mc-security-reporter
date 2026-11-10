@@ -1,0 +1,10 @@
+.mc-security-reporter [hidden] { display: none !important; }
+.mc-security-reporter #mc-security-reporter-token {
+  font-family: monospace;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  border: 1px solid #777;
+  user-select: all;
+}
+.mc-security-reporter textarea { width: min(100%, 60rem); font-family: monospace; }
+.mc-security-reporter form .button { margin: 0 0.5rem 0.5rem 0; }
