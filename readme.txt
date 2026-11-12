@@ -1,7 +1,7 @@
 === MC Security Reporter ===
 Requires at least: 6.4
 Requires PHP: 8.1
-Stable tag: 0.2.2
+Stable tag: 0.2.3
 
 Read-only WordPress inventory for MC Security Monitor. Development version; not approved for live rollout.
 

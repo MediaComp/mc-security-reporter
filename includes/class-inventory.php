@@ -101,6 +101,62 @@ final class Inventory {
 	}
 
 	/**
+	 * Export the official updater's cached slug, or flag an explicit custom Update URI.
+	 *
+	 * @param array  $hints Existing metadata hints.
+	 * @param string $type Component type.
+	 * @param string $identity Local plugin file or theme stylesheet.
+	 * @param string $version Installed version.
+	 * @param string $update_uri Declared Update URI.
+	 * @param mixed  $updates Native update transient.
+	 */
+	private static function with_update_origin( $hints, $type, $identity, $version, $update_uri, $updates ) {
+		$directory = 'plugin' === $type ? 'plugins' : 'themes';
+		$declared  = null;
+		if ( '' !== $update_uri ) {
+			if ( ! preg_match( '~^(?:https://wordpress\.org/' . $directory . '/|w\.org/' . $type . '/)([a-z0-9][a-z0-9._-]*)/?$~D', $update_uri, $match ) ||
+				! self::slug( $match[1] ) || ( 'theme' === $type && $identity !== $match[1] ) ) {
+				$hints['wordpress_org_update_slug'] = null;
+				return $hints;
+			}
+			$declared = $match[1];
+		}
+		if ( ! is_object( $updates ) || ! is_array( $updates->checked ?? null ) || ( $updates->checked[ $identity ] ?? null ) !== $version ) {
+			return $hints;
+		}
+		$response  = is_array( $updates->response ?? null ) ? $updates->response : array();
+		$no_update = is_array( $updates->no_update ?? null ) ? $updates->no_update : array();
+		$record    = $response[ $identity ] ?? $no_update[ $identity ] ?? null;
+		if ( ! is_array( $record ) && ! is_object( $record ) ) {
+			return $hints;
+		}
+		$record = (array) $record;
+		$slug   = 'plugin' === $type ? self::slug( $record['slug'] ?? null ) : self::slug( $identity );
+		if ( ! $slug || ( $record[ $type ] ?? null ) !== $identity || ( $declared && $declared !== $slug ) ||
+			( 'theme' === $type && isset( $record['slug'] ) && $record['slug'] !== $slug ) ) {
+			return $hints;
+		}
+		if ( 'plugin' === $type && ! in_array( $record['id'] ?? null, array( 'w.org/plugins/' . $slug, 'w.org/plugin/' . $slug, 'https://wordpress.org/plugins/' . $slug . '/' ), true ) ) {
+			return $hints;
+		}
+		if ( 'plugin' === $type ) {
+			$directory = dirname( $identity );
+			$local     = '.' === $directory ? basename( $identity, '.php' ) : $directory;
+			if ( $local !== $slug && ! ( 'hello.php' === $identity && 'hello-dolly' === $slug ) ) {
+				return $hints;
+			}
+		}
+		$release = $record['new_version'] ?? null;
+		$package = $record['package'] ?? null;
+		$prefix  = 'https://downloads.wordpress.org/' . $type . '/' . $slug;
+		if ( is_string( $release ) && preg_match( '/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,127}$/D', $release ) &&
+			in_array( $package, array( $prefix . '.zip', $prefix . '.' . $release . '.zip' ), true ) ) {
+			$hints['wordpress_org_update_slug'] = $slug;
+		}
+		return $hints;
+	}
+
+	/**
 	 * Hints.
 	 *
 	 * @param mixed $product_uri Product uri.
@@ -156,7 +212,9 @@ final class Inventory {
 						$available = self::bounded( $updates->response[ $file ]->new_version, 128 );
 					}
 				}
-				$plugins[] = array(
+				$update_uri = $data['UpdateURI'] ?? '';
+				$hints      = self::hints( $data['PluginURI'] ?? '', $update_uri, 'plugin' );
+				$plugins[]  = array(
 					'plugin_file'       => self::identity( $file ),
 					'slug'              => self::slug( dirname( $file ) === '.' ? basename( $file, '.php' ) : dirname( $file ) ),
 					'name'              => self::bounded( $data['Name'], 256 ),
@@ -164,19 +222,23 @@ final class Inventory {
 					'active'            => is_plugin_active( $file ),
 					'update_available'  => $update,
 					'available_version' => $available,
-					'identity_hints'    => self::hints( $data['PluginURI'] ?? '', $data['UpdateURI'] ?? '', 'plugin' ),
+					'identity_hints'    => self::with_update_origin( $hints, 'plugin', $file, $data['Version'], $update_uri, $updates ),
 				);
 			}
+			$theme_updates = get_site_transient( 'update_themes' );
 			foreach ( $all_themes as $stylesheet => $theme ) {
-				$parent   = $theme->get( 'Template' );
-				$themes[] = array(
+				$parent     = $theme->get( 'Template' );
+				$version    = self::bounded( $theme->get( 'Version' ), 128 );
+				$update_uri = $theme->get( 'UpdateURI' );
+				$hints      = self::hints( $theme->get( 'ThemeURI' ), $update_uri, 'theme' );
+				$themes[]   = array(
 					'stylesheet'     => self::identity( $stylesheet ),
 					'slug'           => self::slug( $stylesheet ),
 					'name'           => self::bounded( $theme->get( 'Name' ), 256 ),
-					'version'        => self::bounded( $theme->get( 'Version' ), 128 ),
+					'version'        => $version,
 					'active'         => get_stylesheet() === $stylesheet,
 					'parent_theme'   => '' === $parent ? null : self::identity( $parent ),
-					'identity_hints' => self::hints( $theme->get( 'ThemeURI' ), $theme->get( 'UpdateURI' ), 'theme' ),
+					'identity_hints' => self::with_update_origin( $hints, 'theme', $stylesheet, $version, $update_uri, $theme_updates ),
 				);
 			}
 			$settings = Credentials::settings();
